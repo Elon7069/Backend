@@ -1,9 +1,9 @@
 # Environment variables and secrets
 .env
 .env.local
-.env.example
 .env.*.local
-# Note: .env.example should be committed (it's a template, not ignored)
+# Note: .env.example should be committed (it's a template)
+# Uncomment the line below if .env.example is being ignored
 !.env.example
 
 # API Keys and credentials
@@ -51,3 +51,6 @@ Thumbs.db
 # Output files
 fraud_report.json
 *.json.bak
+
+# Test files
+test_api.py
