@@ -1,6 +1,7 @@
 # Environment variables and secrets
 .env
 .env.local
+.env.example
 .env.*.local
 # Note: .env.example should be committed (it's a template, not ignored)
 !.env.example
