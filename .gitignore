@@ -1,0 +1,52 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+# Note: .env.example should be committed (it's a template, not ignored)
+!.env.example
+
+# API Keys and credentials
+config.ini
+secrets.json
+credentials.json
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model files (if large)
+*.pkl
+*.h5
+*.model
+
+# Data files (if sensitive)
+*.csv
+*.xlsx
+*.xls
+
+# Logs
+*.log
+
+# Output files
+fraud_report.json
+*.json.bak
