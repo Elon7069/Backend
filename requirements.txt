@@ -2,6 +2,7 @@ fastapi
 uvicorn
 pydantic
 python-dotenv
+python-multipart
 pandas
 xgboost
 scikit-learn
