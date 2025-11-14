@@ -76,14 +76,16 @@ async def http_exception_handler(request, exc: HTTPException):
 # Maximum file size: 150MB
 MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB in bytes
 
-# Load model at startup - fail fast if model cannot be loaded
+# Load model at startup - graceful handling for Vercel deployment
+MODEL = None
 try:
     MODEL = load_model("xgb_model.pkl")
     print("Model loaded successfully")
 except Exception as e:
-    error_msg = f"CRITICAL: Failed to load model: {e}"
+    error_msg = f"WARNING: Failed to load model: {e}"
     print(error_msg)
-    raise RuntimeError(error_msg) from e
+    print("API will continue but fraud detection endpoints may not work")
+    # Don't raise - allow API to start for health checks
 
 # Initialize OpenAI client (will be created when needed)
 openai_client = None
@@ -113,9 +115,12 @@ async def health():
     # Check blockchain readiness
     blockchain_ready = "ready" if get_aptos_account() is not None else "not_configured"
     
+    # Check model status
+    model_status = "loaded" if MODEL is not None else "not_loaded"
+    
     return {
         "status": "ok",
-        "ml_model": "loaded",
+        "ml_model": model_status,
         "openai": openai_configured,
         "blockchain": blockchain_ready
     }
