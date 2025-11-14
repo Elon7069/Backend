@@ -7,3 +7,5 @@ xgboost
 scikit-learn
 aptos-sdk
 web3
+openai
+joblib
