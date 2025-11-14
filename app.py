@@ -652,6 +652,6 @@ async def verify(
 
 if __name__ == "__main__":
     import uvicorn
-    # Use PORT environment variable for Render, fallback to 8000 for local development
-    port = int(os.getenv("PORT", 8000))
+    # Use PORT environment variable for Render, fallback to 10000 for local development
+    port = int(os.getenv("PORT", 10000))
     uvicorn.run(app, host="0.0.0.0", port=port)

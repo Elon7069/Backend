@@ -7,13 +7,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
-      - key: BACKEND_API_KEY
-        sync: false  # Set this in Render dashboard
-      - key: OPENAI_API_KEY
-        sync: false  # Set this in Render dashboard
-      # Add Aptos-related environment variables if needed
-      # - key: APTOS_PRIVATE_KEY
-      #   sync: false
-      # - key: APTOS_NETWORK
-      #   value: testnet
-

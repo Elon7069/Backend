@@ -1,31 +1,9 @@
-# Fraud Detection Explainer Dependencies
-# Install with: pip install -r requirements.txt
-
-# OpenAI API integration
-openai>=1.0.0
-
-# Environment variable management
-python-dotenv>=1.0.0
-
-# Model loading
-joblib>=1.3.0
-
-# Data processing
-pandas>=2.0.0
-
-# FastAPI and server
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-pydantic>=2.0.0
-
-# Machine learning
-numpy>=1.24.0
-scikit-learn>=1.3.0
-xgboost>=2.0.0
-
-# Aptos blockchain integration
-aptos-sdk==0.6.3
-
-# Vercel serverless adapter for FastAPI
-mangum>=0.17.0
-
+fastapi
+uvicorn
+pydantic
+python-dotenv
+pandas
+xgboost
+scikit-learn
+aptos-sdk
+web3
