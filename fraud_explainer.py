@@ -27,8 +27,9 @@ def load_model(model_path: str = 'xgb_model.pkl'):
         print(f"[OK] Successfully loaded model from '{model_path}'")
         return model
     except Exception as e:
-        print(f"Error loading model: {e}", file=sys.stderr)
-        sys.exit(1)
+        # Raise exception instead of sys.exit() so it can be caught by calling code
+        # sys.exit() is only used in main() when running as a script
+        raise FileNotFoundError(f"Model file '{model_path}' not found.") from e
 
 
 def load_data(csv_path: str = 'creditcard.csv', sample_size: Optional[int] = None, random_state: int = 42):

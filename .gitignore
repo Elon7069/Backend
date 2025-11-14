@@ -37,6 +37,7 @@ Thumbs.db
 
 # Model files (if large)
 *.pkl
+!xgb_model.pkl  # Allow the main model file to be committed
 *.h5
 *.model
 

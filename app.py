@@ -76,15 +76,19 @@ async def http_exception_handler(request, exc: HTTPException):
 # Maximum file size: 150MB
 MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB in bytes
 
-# Load model at startup - graceful handling for Vercel deployment
+# Load model at startup - graceful handling for deployment
 MODEL = None
 try:
-    MODEL = load_model("xgb_model.pkl")
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    model_path = os.path.join(script_dir, "xgb_model.pkl")
+    MODEL = load_model(model_path)
     print("Model loaded successfully")
 except Exception as e:
     error_msg = f"WARNING: Failed to load model: {e}"
     print(error_msg)
     print("API will continue but fraud detection endpoints may not work")
+    print("Note: Make sure xgb_model.pkl is in the Backend directory and committed to git")
     # Don't raise - allow API to start for health checks
 
 # Initialize OpenAI client (will be created when needed)
