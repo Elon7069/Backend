@@ -8,7 +8,7 @@ import argparse
 import os
 import sys
 import json
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
@@ -65,6 +65,37 @@ def load_data(csv_path: str = 'creditcard.csv', sample_size: Optional[int] = Non
         sys.exit(1)
 
 
+def validate_csv_schema(df: pd.DataFrame) -> Tuple[bool, List[str]]:
+    """
+    Validate CSV schema to ensure all required columns exist.
+    
+    Required columns: Time, Amount, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10,
+                     V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21,
+                     V22, V23, V24, V25, V26, V27, V28
+    
+    Args:
+        df: DataFrame to validate
+        
+    Returns:
+        Tuple of (is_valid, missing_columns)
+        - is_valid: True if all required columns exist, False otherwise
+        - missing_columns: List of missing column names
+    """
+    required_columns = [
+        "Time", "Amount",
+        "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10",
+        "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20",
+        "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28"
+    ]
+    
+    existing_columns = set(df.columns)
+    missing_columns = [col for col in required_columns if col not in existing_columns]
+    
+    is_valid = len(missing_columns) == 0
+    
+    return is_valid, missing_columns
+
+
 def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
     """Prepare features by removing the target column if it exists."""
     if 'Class' in df.columns:
@@ -74,7 +105,7 @@ def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_risk_level(score: float) -> str:
-    """Get risk level based on fraud score.
+    """Get risk level based on fraud score (v2).
     
     Args:
         score: Fraud probability score (0.0 to 1.0)
@@ -82,14 +113,14 @@ def get_risk_level(score: float) -> str:
     Returns:
         Risk level string: 'Low', 'Medium', 'High', or 'Critical'
     """
-    if score < 0.20:
-        return "Low"
-    elif score < 0.60:
-        return "Medium"
-    elif score < 0.90:
-        return "High"
-    else:
+    if score > 0.98:
         return "Critical"
+    elif score > 0.90:
+        return "High"
+    elif score > 0.70:
+        return "Medium"
+    else:
+        return "Low"
 
 
 def predict_fraud(model, df: pd.DataFrame) -> pd.DataFrame:
@@ -328,10 +359,10 @@ Fraud Model Score: {fraud_score}
 Risk Level: {risk_level}
 
 Interpretation Guide:
-- 0.00–0.20 = Very Low Risk
-- 0.20–0.60 = Medium Risk
-- 0.60–0.90 = High Risk
-- 0.90–1.00 = Critical Risk
+- 0.00–0.70 = Low Risk
+- 0.70–0.90 = Medium Risk
+- 0.90–0.98 = High Risk
+- 0.98–1.00 = Critical Risk
 
 Notes:
 - V1–V28 are anonymized PCA components; large positive or negative values indicate outlier behavior.
