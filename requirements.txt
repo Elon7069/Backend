@@ -26,3 +26,6 @@ xgboost>=2.0.0
 # Aptos blockchain integration
 aptos-sdk==0.6.3
 
+# Vercel serverless adapter for FastAPI
+mangum>=0.17.0
+
