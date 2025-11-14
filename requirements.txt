@@ -5,7 +5,7 @@ python-dotenv
 pandas
 xgboost
 scikit-learn
-aptos-sdk
+aptos-sdk==0.6.3
 web3
 openai
 joblib
