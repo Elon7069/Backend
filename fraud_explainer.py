@@ -8,14 +8,14 @@ import argparse
 import os
 import sys
 import json
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
 import joblib
 import pandas as pd
 from dotenv import load_dotenv
-from openai import OpenAI, APIError
+from openai import OpenAI, APIError, APITimeoutError
 
 
 def load_model(model_path: str = 'xgb_model.pkl'):
@@ -24,7 +24,7 @@ def load_model(model_path: str = 'xgb_model.pkl'):
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"Model file '{model_path}' not found.")
         model = joblib.load(model_path)
-        print(f"✓ Successfully loaded model from '{model_path}'")
+        print(f"[OK] Successfully loaded model from '{model_path}'")
         return model
     except Exception as e:
         print(f"Error loading model: {e}", file=sys.stderr)
@@ -55,7 +55,7 @@ def load_data(csv_path: str = 'creditcard.csv', sample_size: Optional[int] = Non
         else:
             df = pd.read_csv(csv_path)
         
-        print(f"✓ Successfully loaded data from '{csv_path}'")
+        print(f"[OK] Successfully loaded data from '{csv_path}'")
         print(f"  Dataset shape: {df.shape}")
         if sample_size and len(df) < sample_size:
             print(f"  Note: Requested {sample_size} rows but only {len(df)} available")
@@ -65,16 +65,47 @@ def load_data(csv_path: str = 'creditcard.csv', sample_size: Optional[int] = Non
         sys.exit(1)
 
 
+def validate_csv_schema(df: pd.DataFrame) -> Tuple[bool, List[str]]:
+    """
+    Validate CSV schema to ensure all required columns exist.
+    
+    Required columns: Time, Amount, V1, V2, V3, V4, V5, V6, V7, V8, V9, V10,
+                     V11, V12, V13, V14, V15, V16, V17, V18, V19, V20, V21,
+                     V22, V23, V24, V25, V26, V27, V28
+    
+    Args:
+        df: DataFrame to validate
+        
+    Returns:
+        Tuple of (is_valid, missing_columns)
+        - is_valid: True if all required columns exist, False otherwise
+        - missing_columns: List of missing column names
+    """
+    required_columns = [
+        "Time", "Amount",
+        "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10",
+        "V11", "V12", "V13", "V14", "V15", "V16", "V17", "V18", "V19", "V20",
+        "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28"
+    ]
+    
+    existing_columns = set(df.columns)
+    missing_columns = [col for col in required_columns if col not in existing_columns]
+    
+    is_valid = len(missing_columns) == 0
+    
+    return is_valid, missing_columns
+
+
 def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
     """Prepare features by removing the target column if it exists."""
     if 'Class' in df.columns:
         df = df.drop('Class', axis=1)
-        print("✓ Removed 'Class' column from dataset")
+        print("[OK] Removed 'Class' column from dataset")
     return df
 
 
 def get_risk_level(score: float) -> str:
-    """Get risk level based on fraud score.
+    """Get risk level based on fraud score (v2).
     
     Args:
         score: Fraud probability score (0.0 to 1.0)
@@ -82,14 +113,14 @@ def get_risk_level(score: float) -> str:
     Returns:
         Risk level string: 'Low', 'Medium', 'High', or 'Critical'
     """
-    if score < 0.20:
-        return "Low"
-    elif score < 0.60:
-        return "Medium"
-    elif score < 0.90:
-        return "High"
-    else:
+    if score > 0.98:
         return "Critical"
+    elif score > 0.90:
+        return "High"
+    elif score > 0.70:
+        return "Medium"
+    else:
+        return "Low"
 
 
 def predict_fraud(model, df: pd.DataFrame) -> pd.DataFrame:
@@ -116,7 +147,7 @@ def predict_fraud(model, df: pd.DataFrame) -> pd.DataFrame:
         df['fraud_flag'] = df['fraud_score'] > 0.90
         
         flagged_count = df['fraud_flag'].sum()
-        print(f"✓ Predictions completed. Found {flagged_count} flagged transactions (fraud_score > 0.90)")
+        print(f"[OK] Predictions completed. Found {flagged_count} flagged transactions (fraud_score > 0.90)")
         return df
     except Exception as e:
         print(f"Error during prediction: {e}", file=sys.stderr)
@@ -156,7 +187,7 @@ def initialize_openai_client() -> OpenAI:
                 env_file_found = env_path
                 # Load with override=True to ensure it loads
                 load_dotenv(env_path, override=True)
-                print(f"✓ Loading .env file from: {env_path}")
+                print(f"[OK] Loading .env file from: {env_path}")
                 
                 # Try to read the file directly as backup
                 try:
@@ -182,10 +213,10 @@ def initialize_openai_client() -> OpenAI:
                                     # Set in environment directly
                                     os.environ['OPENAI_API_KEY'] = value
                                     api_key = value
-                                    print(f"✓ Found API key in .env file (length: {len(value)})")
+                                    print(f"[OK] Found API key in .env file (length: {len(value)})")
                                     break
                 except Exception as e:
-                    print(f"⚠ Warning: Could not read .env file directly: {e}")
+                    print(f"[WARNING] Could not read .env file directly: {e}")
                 
                 break
         
@@ -283,10 +314,10 @@ def initialize_openai_client() -> OpenAI:
         
         # Validate API key format (should start with sk-)
         if not api_key_clean.startswith('sk-'):
-            print(f"⚠ Warning: API key doesn't start with 'sk-'. Make sure it's correct.")
+            print(f"[WARNING] API key doesn't start with 'sk-'. Make sure it's correct.")
         
         client = OpenAI(api_key=api_key)
-        print("✓ Successfully initialized OpenAI client")
+        print("[OK] Successfully initialized OpenAI client")
         return client
     except ValueError as e:
         print(f"Error initializing OpenAI client: {e}", file=sys.stderr)
@@ -328,10 +359,10 @@ Fraud Model Score: {fraud_score}
 Risk Level: {risk_level}
 
 Interpretation Guide:
-- 0.00–0.20 = Very Low Risk
-- 0.20–0.60 = Medium Risk
-- 0.60–0.90 = High Risk
-- 0.90–1.00 = Critical Risk
+- 0.00–0.70 = Low Risk
+- 0.70–0.90 = Medium Risk
+- 0.90–0.98 = High Risk
+- 0.98–1.00 = Critical Risk
 
 Notes:
 - V1–V28 are anonymized PCA components; large positive or negative values indicate outlier behavior.
@@ -362,23 +393,25 @@ Transaction:
 {formatted}
 """
         
-        # Call OpenAI API
+        # Call OpenAI API with timeout
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1
+            temperature=0.1,
+            timeout=30.0  # 30 second timeout to prevent hanging
         )
         
         explanation = response.choices[0].message.content
         return explanation, risk_level
         
-    except APIError as e:
-        print(f"  ⚠ OpenAI API error for transaction {transaction_id}: {e}", file=sys.stderr)
+    except (APIError, APITimeoutError) as e:
+        error_type = "timeout" if isinstance(e, APITimeoutError) else "API error"
+        print(f"  [ERROR] OpenAI {error_type} for transaction {transaction_id}: {e}", file=sys.stderr)
         fraud_score = row.get('fraud_score', 0.0)
         risk_level = get_risk_level(fraud_score)
         return None, risk_level
     except Exception as e:
-        print(f"  ⚠ Error generating explanation for transaction {transaction_id}: {e}", file=sys.stderr)
+        print(f"  [ERROR] Error generating explanation for transaction {transaction_id}: {e}", file=sys.stderr)
         fraud_score = row.get('fraud_score', 0.0)
         risk_level = get_risk_level(fraud_score)
         return None, risk_level
@@ -415,12 +448,12 @@ def explain_transactions_parallel(client: OpenAI, flagged_df: pd.DataFrame, max_
                 result_idx, explanation, risk_level = future.result()
                 explanations[result_idx] = explanation
                 risk_levels[result_idx] = risk_level
-                print(f"  ✓ Completed explanation {result_idx + 1}/{len(flagged_df)}")
+                print(f"  [OK] Completed explanation {result_idx + 1}/{len(flagged_df)}")
             except Exception as e:
-                print(f"  ⚠ Error getting explanation for transaction {idx}: {e}", file=sys.stderr)
+                print(f"  [ERROR] Error getting explanation for transaction {idx}: {e}", file=sys.stderr)
     
     elapsed_time = time.time() - start_time
-    print(f"  ✓ All explanations completed in {elapsed_time:.2f} seconds")
+    print(f"  [OK] All explanations completed in {elapsed_time:.2f} seconds")
     
     return explanations, risk_levels
 
@@ -439,9 +472,9 @@ def print_explanations(flagged_df: pd.DataFrame, explanations: list, risk_levels
         explanation = explanations[idx - 1] if idx - 1 < len(explanations) else None
         risk_level = risk_levels[idx - 1] if risk_levels and idx - 1 < len(risk_levels) else get_risk_level(row.get('fraud_score', 0.0))
         
-        print(f"\n{'─' * 80}")
+        print(f"\n{'-' * 80}")
         print(f"Transaction #{idx} (Index: {row_idx})")
-        print(f"{'─' * 80}")
+        print(f"{'-' * 80}")
         print(f"Amount: ${row['Amount']:.2f}")
         print(f"Fraud Score: {row['fraud_score']:.4f}")
         print(f"Risk Level: {risk_level}")
@@ -451,7 +484,7 @@ def print_explanations(flagged_df: pd.DataFrame, explanations: list, risk_levels
             print(f"\nExplanation:")
             print(explanation)
         else:
-            print("\n⚠ Could not generate explanation for this transaction.")
+            print("\n[WARNING] Could not generate explanation for this transaction.")
         
         print()
 
@@ -478,10 +511,10 @@ def save_fraud_report(flagged_df: pd.DataFrame, explanations: list, risk_levels:
     try:
         with open(output_path, "w") as f:
             json.dump(final_reports, f, indent=4, default=str)
-        print(f"\n📁 Final report saved → {output_path}")
+        print(f"\n[OK] Final report saved -> {output_path}")
         return output_path
     except Exception as e:
-        print(f"⚠ Error saving report to {output_path}: {e}", file=sys.stderr)
+        print(f"[ERROR] Error saving report to {output_path}: {e}", file=sys.stderr)
         return None
 
 
@@ -557,7 +590,7 @@ Examples:
     # Load data (with optional sampling for speed)
     csv_path = args.csv_path
     if args.sample:
-        print(f"⚡ Performance mode: Sampling {args.sample} rows for faster processing")
+        print(f"[PERF] Performance mode: Sampling {args.sample} rows for faster processing")
         print(f"  Using CSV file: {csv_path}")
     df = load_data(csv_path, sample_size=args.sample)
     
@@ -568,7 +601,7 @@ Examples:
     prediction_start = time.time()
     df_results = predict_fraud(model, df_features)
     prediction_time = time.time() - prediction_start
-    print(f"✓ Prediction completed in {prediction_time:.2f} seconds")
+    print(f"[OK] Prediction completed in {prediction_time:.2f} seconds")
     
     # Get flagged transactions (sorted by fraud_score, top N)
     flagged_df = df_results[df_results['fraud_flag'] == True].sort_values('fraud_score', ascending=False).head(args.top_n)
@@ -585,7 +618,7 @@ Examples:
     client = initialize_openai_client()
     
     # Generate explanations for flagged transactions (in parallel for speed)
-    print(f"\n🚨 Found {len(flagged_df)} suspicious transactions.")
+    print(f"\n[ALERT] Found {len(flagged_df)} suspicious transactions.")
     print(f"Generating explanations for {len(flagged_df)} flagged transactions...")
     explanation_start = time.time()
     
@@ -601,7 +634,7 @@ Examples:
             risk_levels.append(risk_level)
     
     explanation_time = time.time() - explanation_start
-    print(f"✓ Explanation generation completed in {explanation_time:.2f} seconds")
+    print(f"[OK] Explanation generation completed in {explanation_time:.2f} seconds")
     
     # Print formatted explanations
     print_explanations(flagged_df, explanations, risk_levels)
