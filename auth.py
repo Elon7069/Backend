@@ -1,48 +1,43 @@
 """
-API Key authentication for HAWKEYE Fraud Detection API.
-
-Frontend must send header:
-"x-api-key": "<BACKEND_API_KEY>"
+Authentication module for HAWKEYE Fraud Detection API.
+Provides API key authentication for protected endpoints.
 """
-from fastapi import Header, HTTPException
-from fastapi.responses import JSONResponse
-from typing import Optional
 import os
+from fastapi import HTTPException, Header
+from typing import Optional
 
-# Load API key from environment
+# Load API key from environment variable
 BACKEND_API_KEY = os.getenv("BACKEND_API_KEY")
 
-# Warn if API key is missing (but don't fail startup)
-if not BACKEND_API_KEY:
-    import warnings
-    warnings.warn(
-        "WARNING: BACKEND_API_KEY not found in environment. "
-        "API key authentication will fail. Please set BACKEND_API_KEY in .env file.",
-        UserWarning
-    )
 
-
-async def verify_api_key(x_api_key: Optional[str] = Header(None, alias="x-api-key")):
+async def verify_api_key(x_api_key: Optional[str] = Header(None)) -> str:
     """
     Verify API key from request header.
     
-    Raises HTTPException with 401 status if API key is missing or invalid.
-    Returns error in format: { "error": "Unauthorized. Invalid or missing API key." }
+    Args:
+        x_api_key: API key from request header
+        
+    Returns:
+        The validated API key
+        
+    Raises:
+        HTTPException: If API key is invalid or missing
     """
     if not BACKEND_API_KEY:
+        # If no BACKEND_API_KEY is set in environment, allow all requests
+        # This is useful for local development
+        return ""
+    
+    if not x_api_key:
         raise HTTPException(
-            status_code=500,
-            detail="Server configuration error: API key not configured"
+            status_code=401, 
+            detail="Missing API key. Include 'x-api-key' header in your request."
         )
     
     if x_api_key != BACKEND_API_KEY:
-        # Raise HTTPException which FastAPI will convert to JSON
-        # The response will be: {"detail": "Unauthorized. Invalid or missing API key."}
-        # But we want {"error": ...}, so we'll use a custom exception handler
         raise HTTPException(
-            status_code=401,
-            detail="Unauthorized. Invalid or missing API key."
+            status_code=401, 
+            detail="Invalid API key"
         )
     
-    return True
-
+    return x_api_key

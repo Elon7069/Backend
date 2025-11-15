@@ -1,35 +1,71 @@
 # Render Deployment Guide
 
-## Prerequisites
+## 🔧 Prerequisites
 
-1. **Model File**: Ensure `xgb_model.pkl` is included in your repository or uploaded to Render
-   - If your `.gitignore` excludes `.pkl` files, you may need to temporarily allow it or use a different deployment method
-   - Alternative: Upload the model file directly to Render's file system or use cloud storage
+Before deploying to Render, ensure you have:
 
-2. **Environment Variables**: Set the following in Render Dashboard → Environment:
-   - `BACKEND_API_KEY`: Your API key for authentication
-   - `OPENAI_API_KEY`: Your OpenAI API key (required for `/explain` and `/report` endpoints)
-   - `PORT`: Automatically set by Render (don't override)
-   - Aptos-related variables (if using blockchain features):
-     - `APTOS_PRIVATE_KEY`: Your Aptos private key
-     - `APTOS_NETWORK`: Network (default: testnet)
+1. ✅ **GitHub Repository**: Your code must be pushed to GitHub
+2. ✅ **Model File**: `xgb_model.pkl` exists in the `Backend` directory and is committed to git
+3. ✅ **Missing Files Fixed**: The `auth.py` file has been created (now included)
+4. ✅ **Render Account**: Sign up at [render.com](https://render.com)
 
-## Deployment Steps
+## 🚀 Deployment Steps
 
-### Option 1: Using render.yaml (Recommended)
+### Step 1: Connect Repository to Render
 
-1. Connect your GitHub repository to Render
-2. Render will automatically detect `render.yaml` in the `Backend` directory
-3. Configure environment variables in Render Dashboard
-4. Deploy!
+1. Go to [Render Dashboard](https://dashboard.render.com/)
+2. Click **New +** → **Web Service**
+3. Connect your GitHub account and select your repository
+4. **Important**: Set **Root Directory** to `Backend`
+   - This tells Render where to find your code
 
-### Option 2: Manual Configuration
+### Step 2: Configure Service
 
-1. **Service Type**: Web Service
-2. **Build Command**: `pip install -r requirements.txt`
-3. **Start Command**: `uvicorn app:app --host 0.0.0.0 --port $PORT`
-4. **Root Directory**: `Backend` (if deploying from repo root)
-5. **Python Version**: 3.11.0 (or compatible)
+Render should auto-detect your `render.yaml` file. Verify these settings:
+
+- **Name**: `hawkeye-backend` (or choose your own)
+- **Runtime**: Python
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+- **Python Version**: 3.11.0
+
+### Step 3: Set Environment Variables
+
+In Render Dashboard → Environment, add these variables:
+
+**Required:**
+- `BACKEND_API_KEY`: Create a secure API key (e.g., `hawk_secret_12345`)
+- `OPENAI_API_KEY`: Your OpenAI API key from [platform.openai.com](https://platform.openai.com)
+
+**Optional (for blockchain features):**
+- `APTOS_PRIVATE_KEY`: Your Aptos private key (without 0x prefix)
+- `APTOS_NETWORK`: Set to `testnet` (default) or `mainnet`
+
+**Note**: Do NOT set `PORT` - Render sets this automatically!
+
+### Step 4: Deploy
+
+1. Click **Create Web Service**
+2. Render will:
+   - Clone your repository
+   - Install dependencies from `requirements.txt`
+   - Start your FastAPI app with uvicorn
+3. Wait for build to complete (2-5 minutes)
+4. Your service will be live at `https://your-service-name.onrender.com`
+
+### Step 5: Verify Deployment
+
+Test your deployment:
+
+```bash
+# Health check
+curl https://your-service-name.onrender.com/health
+
+# Test detect endpoint (requires API key)
+curl -X POST https://your-service-name.onrender.com/detect \
+  -H "x-api-key: YOUR_BACKEND_API_KEY" \
+  -F "file=@creditcard.csv"
+```
 
 ## Important Notes
 
@@ -50,4 +86,3 @@
 - **Port errors**: Render sets `PORT` automatically - don't override it
 - **API key errors**: Verify environment variables are set correctly in Render Dashboard
 - **Import errors**: Check that all dependencies in `requirements.txt` are correct
-
